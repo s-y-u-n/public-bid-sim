@@ -2,14 +2,20 @@
 
 import { NextResponse } from "next/server";
 import { isValidUUID } from "@/lib/validation";
-import { supabase } from "@/lib/supabaseClient";
+// Service Role Key を利用したクライアントを作成
+import { createClient } from "@supabase/supabase-js";
 
 interface RequestBody {
   created_by: string;
 }
 
-// POST /api/game
-// Supabase に実際のレコードを作成
+// Service Role Key は .env.local から読み込む
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+// サーバー側専用クライアント（RLSをバイパス）
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
+
 export async function POST(request: Request) {
   try {
     const body: RequestBody = await request.json();
@@ -23,8 +29,10 @@ export async function POST(request: Request) {
       );
     }
 
+    // ------- ここから supabaseAdmin を使って RLSをバイパス -------
+
     // ① game_sessions テーブルに挿入
-    const { data: sessionData, error: sessionError } = await supabase
+    const { data: sessionData, error: sessionError } = await supabaseAdmin
       .from("game_sessions")
       .insert([
         {
@@ -39,13 +47,13 @@ export async function POST(request: Request) {
     if (sessionError || !sessionData) {
       console.error("ゲームセッション作成エラー:", sessionError);
       return NextResponse.json(
-        { error: "ゲームセッションの作成に失敗しました" },
+        { error: sessionError?.message || "ゲームセッションの作成に失敗しました" },
         { status: 500 }
       );
     }
 
     // ② participants テーブルに「作成者」を登録
-    const { data: participantData, error: participantError } = await supabase
+    const { data: participantData, error: participantError } = await supabaseAdmin
       .from("participants")
       .insert([
         {
@@ -58,12 +66,13 @@ export async function POST(request: Request) {
 
     if (participantError || !participantData) {
       console.error("参加者登録エラー:", participantError);
-      // もしセッションだけ作成されてしまった場合は削除するかも検討
       return NextResponse.json(
-        { error: "参加者の登録に失敗しました" },
+        { error: participantError?.message || "参加者の登録に失敗しました" },
         { status: 500 }
       );
     }
+
+    // ------- supabaseAdmin 終了 -------
 
     // ③ 成功したら作成したセッション情報と参加者情報を返却
     return NextResponse.json(
@@ -73,10 +82,10 @@ export async function POST(request: Request) {
       },
       { status: 201 }
     );
-  } catch (e) {
+  } catch (e: any) {
     console.error("POST /api/game 例外:", e);
     return NextResponse.json(
-      { error: "リクエスト処理中にエラーが発生しました" },
+      { error: e.message || "リクエスト処理中にエラーが発生しました" },
       { status: 500 }
     );
   }
