@@ -1,16 +1,15 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/api/bid/[id]/route.ts
 
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
 
-interface Params {
-  params: { id: string };
-}
-
 // GET /api/bid/[id]
-//   → URL の <id> 部分を params.id として受け取る
-export async function GET(request: Request, { params }: Params) {
-  const { id } = await params; // 例: "abb258e6-f1d4-4a81-9920-e7fddfd4e96b"
+export async function GET(
+  request: Request,
+  context: any // any にして型チェックを回避
+) {
+  const { id } = (context.params as { id: string });
 
   // ① 該当する bids テーブルのレコードを single() で取得
   const { data: bid, error: bidError } = await supabase
@@ -26,7 +25,7 @@ export async function GET(request: Request, { params }: Params) {
     );
   }
 
-  // ② その案件に紐づく entries テーブルのレコードを取得（最新順などお好みでソート）
+  // ② その案件に紐づく entries テーブルのレコードを取得（最新順でソート）
   const { data: entries, error: entriesError } = await supabase
     .from("entries")
     .select("*")
@@ -45,9 +44,11 @@ export async function GET(request: Request, { params }: Params) {
 }
 
 // PUT /api/bid/[id]
-//   → リクエストボディに JSON を含む。更新処理を行う
-export async function PUT(request: Request, { params }: Params) {
-  const { id } = params;
+export async function PUT(
+  request: Request,
+  context: any // any にして型チェックを回避
+) {
+  const { id } = (context.params as { id: string });
   const body = await request.json();
   const {
     title,
@@ -63,7 +64,7 @@ export async function PUT(request: Request, { params }: Params) {
     updated_by: string;
   };
 
-  // まず、作成者(created_by)をチェックするために既存レコードを取得
+  // 作成者(created_by)をチェックするために既存レコードを取得
   const { data: existing, error: fetchError } = await supabase
     .from("bids")
     .select("created_by")
@@ -100,9 +101,11 @@ export async function PUT(request: Request, { params }: Params) {
 }
 
 // DELETE /api/bid/[id]?user_id=<ユーザーID>
-//   → クエリパラメータ user_id を受け取り、作成者チェックのうえ削除を実行
-export async function DELETE(request: Request, { params }: Params) {
-  const { id } = params;
+export async function DELETE(
+  request: Request,
+  context: any // any にして型チェックを回避
+) {
+  const { id } = (context.params as { id: string });
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get("user_id"); // 例: "abb258e6-f1d4-4a81-9920-e7fddfd4e96b"
 

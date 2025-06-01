@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useSupabaseClient, useSession } from "@supabase/auth-helpers-react";
+import { useSession } from "@supabase/auth-helpers-react";
 
 interface BidDetail {
   id: string;
@@ -15,7 +15,6 @@ interface BidDetail {
 }
 
 export default function EditBidPage() {
-  const supabase = useSupabaseClient();
   const session = useSession();
   const router = useRouter();
   const { id } = useParams(); // URL の [id]

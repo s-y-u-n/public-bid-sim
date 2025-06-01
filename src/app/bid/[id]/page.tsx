@@ -99,6 +99,7 @@ export default function BidDetailPage() {
         }),
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let json: any = null;
       const contentType = res.headers.get("content-type") || "";
       if (contentType.includes("application/json")) {

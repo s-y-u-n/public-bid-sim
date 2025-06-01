@@ -6,8 +6,7 @@ import { ReactNode, useState } from "react";
 import { createBrowserSupabaseClient } from "@supabase/auth-helpers-nextjs";
 // ← SessionContextProvider は auth-helpers-react から
 import { SessionContextProvider } from "@supabase/auth-helpers-react";
-// 相対パスを “@/components/NavBar” ではなく、src/app から見た相対パスに変更
-import NavBar from "../components/NavBar";  
+
 
 interface ProvidersProps {
   children: ReactNode;

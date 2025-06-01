@@ -28,7 +28,7 @@ export default function SignInPage() {
     e.preventDefault();
     setErrorMsg(null);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });

@@ -2,11 +2,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSupabaseClient, useSession } from "@supabase/auth-helpers-react";
+import { useSession } from "@supabase/auth-helpers-react";
 import { useRouter } from "next/navigation";
 
 export default function NewBidPage() {
-  const supabase = useSupabaseClient();
   const session = useSession();
   const router = useRouter();
 
@@ -65,6 +64,7 @@ export default function NewBidPage() {
       });
 
       // レスポンスが JSON かどうかをチェックしてからパース
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let json: any = null;
       const contentType = res.headers.get("content-type") || "";
       if (contentType.includes("application/json")) {
