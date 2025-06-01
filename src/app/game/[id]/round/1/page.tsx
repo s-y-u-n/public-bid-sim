@@ -52,13 +52,12 @@ export default function Round1Page() {
         const res = await fetch(`/api/game/${sessionId}`);
         if (!res.ok) {
           let errMsg = "参加者情報の取得に失敗しました";
-          // レスポンスが JSON かどうか確認
           const text = await res.text();
           try {
             const body = JSON.parse(text);
             errMsg = body.error || errMsg;
           } catch {
-            // JSON でなければそのまま errMsg を使う
+            // JSON parse に失敗 ⇒ デフォルト errMsg
           }
           setParticipantError(errMsg);
           setFetchingParticipant(false);
@@ -99,7 +98,6 @@ export default function Round1Page() {
             const body = JSON.parse(text);
             errMsg = body.error || errMsg;
           } catch {
-            // JSON parse に失敗⇒テキストそのまま使う（ただし空文字ならデフォルト）
             if (text.trim()) {
               errMsg = text;
             }
