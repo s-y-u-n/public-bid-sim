@@ -1,27 +1,60 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/api/game/route.ts
 
 import { NextResponse } from "next/server";
 import { isValidUUID } from "@/lib/validation";
-// Service Role Key を利用したクライアントを作成
 import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+// Service Role Key を利用したクライアント（RLSバイパス）
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
 interface RequestBody {
   created_by: string;
 }
 
-// Service Role Key は .env.local から読み込む
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+// -----------------------------------
+// GET /api/game
+//   → 待機中（status = 'waiting'）のゲームセッション一覧を返す
+export async function GET() {
+  try {
+    // ① game_sessions テーブルから status='waiting' のレコードをすべて取得
+    const { data: sessions, error } = await supabaseAdmin
+      .from("game_sessions")
+      .select("*")
+      .eq("status", "waiting")
+      .order("created_at", { ascending: true });
 
-// サーバー側専用クライアント（RLSをバイパス）
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
+    if (error) {
+      console.error("ゲームセッション一覧取得エラー:", error);
+      return NextResponse.json(
+        { error: "ゲームセッション一覧の取得に失敗しました" },
+        { status: 500 }
+      );
+    }
 
+    // ② 正常時は配列を返却（待機中セッションがなければ空配列）
+    return NextResponse.json(sessions ?? [], { status: 200 });
+  } catch (e: any) {
+    console.error("GET /api/game 例外:", e);
+    return NextResponse.json(
+      { error: e.message || "リクエスト処理中にエラーが発生しました" },
+      { status: 500 }
+    );
+  }
+}
+
+// -----------------------------------
+// POST /api/game
+//   → ゲームセッション作成 + 自分を参加者登録
 export async function POST(request: Request) {
   try {
     const body: RequestBody = await request.json();
     const { created_by } = body;
 
-    // バリデーション: created_by（AuthユーザーID）はUUID形式必須
+    // バリデーション: created_by は必須かつUUID形式
     if (!created_by || !isValidUUID(created_by)) {
       return NextResponse.json(
         { error: "created_by（ユーザーID）が正しくありません" },
@@ -29,9 +62,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // ------- ここから supabaseAdmin を使って RLSをバイパス -------
-
-    // ① game_sessions テーブルに挿入
+    // ① game_sessions テーブルに挿入（supabaseAdmin で実行）
     const { data: sessionData, error: sessionError } = await supabaseAdmin
       .from("game_sessions")
       .insert([
@@ -52,7 +83,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // ② participants テーブルに「作成者」を登録
+    // ② participants テーブルに「作成者」を登録（supabaseAdmin で実行）
     const { data: participantData, error: participantError } = await supabaseAdmin
       .from("participants")
       .insert([
@@ -72,9 +103,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // ------- supabaseAdmin 終了 -------
-
-    // ③ 成功したら作成したセッション情報と参加者情報を返却
+    // ③ 成功時は作成したセッション情報と参加者情報を返却
     return NextResponse.json(
       {
         session: sessionData,
