@@ -10,22 +10,38 @@ interface Params {
 // GET /api/bid/[id]
 //   → URL の <id> 部分を params.id として受け取る
 export async function GET(request: Request, { params }: Params) {
-  const { id } = params; // 例: "abb258e6-f1d4-4a81-9920-e7fddfd4e96b"
+  const { id } = await params; // 例: "abb258e6-f1d4-4a81-9920-e7fddfd4e96b"
 
-  // Supabase の bids テーブルから該当レコードを single() で取得
-  const { data, error } = await supabase
+  // ① 該当する bids テーブルのレコードを single() で取得
+  const { data: bid, error: bidError } = await supabase
     .from("bids")
     .select("*")
     .eq("id", id)
     .single();
 
-  if (error || !data) {
+  if (bidError || !bid) {
     return NextResponse.json(
-      { error: error?.message || "案件が見つかりません" },
+      { error: bidError?.message || "案件が見つかりません" },
       { status: 404 }
     );
   }
-  return NextResponse.json(data, { status: 200 });
+
+  // ② その案件に紐づく entries テーブルのレコードを取得（最新順などお好みでソート）
+  const { data: entries, error: entriesError } = await supabase
+    .from("entries")
+    .select("*")
+    .eq("bid_id", id)
+    .order("created_at", { ascending: false });
+
+  if (entriesError) {
+    return NextResponse.json(
+      { error: entriesError.message },
+      { status: 500 }
+    );
+  }
+
+  // ③ bid と entries をまとめて返却
+  return NextResponse.json({ bid, entries }, { status: 200 });
 }
 
 // PUT /api/bid/[id]
